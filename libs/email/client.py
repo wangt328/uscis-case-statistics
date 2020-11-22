@@ -19,7 +19,7 @@ class SESEmailClient(EmailClient):
     """
     email client using SES
     """
-    def __init__(self, sender: str):
+    def __init__(self):
         self.client = boto3.client('ses', region_name='us-east-1')
 
     def send(self, message: MIMEMultipart) -> None:

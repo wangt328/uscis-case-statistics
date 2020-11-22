@@ -14,11 +14,14 @@ CASE_STATUS_PATTERN = r'\: (.*?) \+'
 
 
 class USCISStatusFetcher(object):
-    def __init__(self, save_to_mongodb: bool = False):
-        if save_to_mongodb:
-            self.mongo_collection = MongoDatabase('uscis')['case_history']
-        else:
-            self.mongo_collection = None
+    def __init__(self):
+        self._approved_case_nums = self.__get_approved_case_numbers()
+        self._collection = MongoDatabase('uscis')['case_history']
+
+    def __get_approved_case_numbers(self):
+        query = {'status': {'$eq': 'Case Was Approved'}}
+        curse = self._collection.find(query, {'_id': False})
+        return set(x['case_number'] for x in curse)
 
     def __write_to_mongo(self, data: List):
         db_writes = []
@@ -28,7 +31,7 @@ class USCISStatusFetcher(object):
             update_one = UpdateOne(update_filter, update, upsert=True)
             db_writes.append(update_one)
         if db_writes:
-            self.mongo_collection.bulk_write(db_writes)
+            self._collection.bulk_write(db_writes)
 
     def query(self,
               service_center: str,
@@ -40,6 +43,9 @@ class USCISStatusFetcher(object):
             result = []
             for j in range(sampling_range):
                 case_number = service_center + str(i) + str(50000 + j)
+                if case_number in self._approved_case_nums:
+                    continue
+
                 print('Query ' + case_number)
                 case_status = self.get_case_status(case_number, case_type)
                 if case_status:
