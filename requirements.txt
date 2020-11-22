@@ -1,0 +1,6 @@
+boto3
+botocore
+requests
+beautifulsoup4
+pandas
+pymongo
