@@ -15,8 +15,8 @@ CASE_STATUS_PATTERN = r'\: (.*?) \+'
 
 class USCISStatusFetcher(object):
     def __init__(self):
-        self._approved_case_nums = self.__get_approved_case_numbers()
         self._collection = MongoDatabase('uscis')['case_history']
+        self._approved_case_nums = self.__get_approved_case_numbers()
 
     def __get_approved_case_numbers(self):
         query = {'status': {'$eq': 'Case Was Approved'}}
