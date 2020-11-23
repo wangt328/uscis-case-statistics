@@ -1,7 +1,9 @@
 import re
+import time
 from datetime import datetime
 from typing import Dict, Union, Any, Optional, List
-import time
+
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from pandas import Timestamp
@@ -52,6 +54,10 @@ class USCISStatusFetcher(object):
                     result.append(case_status)
             self.__write_to_mongo(result)
             time.sleep(60)
+
+        cursor = self._collection.find()
+        df = pd.DataFrame(list(cursor))
+        df.to_csv('df_{}.csv'.format(datetime.now().strftime("%Y_%m_%d")))
 
     @staticmethod
     def get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
