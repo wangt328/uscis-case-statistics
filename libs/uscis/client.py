@@ -21,11 +21,17 @@ class USCISStatusFetcher(object):
         self._approved_case_nums = self.__get_approved_case_numbers()
 
     def __get_approved_case_numbers(self):
+        """
+        Cache the case numbers that have been approved already
+        """
         query = {'status': {'$eq': 'Case Was Approved'}}
         curse = self._collection.find(query, {'_id': False})
         return set(x['case_number'] for x in curse)
 
     def __write_to_mongo(self, data: List):
+        """
+        Write the query result into MongoDB collection
+        """
         db_writes = []
         for item in data:
             update_filter = {'case_number': item['case_number']}
@@ -40,6 +46,15 @@ class USCISStatusFetcher(object):
               case_type: str,
               sampling_dates: List[int],
               sampling_range: int) -> None:
+        """
+        Query the case status within the range and dates and save the result to the MongoDB
+
+        Args:
+            service_center: three characters that stands for the USCIS processing center. For example, LIN, EAC, etc
+            case_type: form type like 'I-539', 'I-765', etc
+            sampling_dates: list of receive dates that we want to query.
+            sampling_range: number of cases we want to query from 50000.
+        """
 
         for i in sampling_dates:
             result = []
@@ -61,6 +76,14 @@ class USCISStatusFetcher(object):
 
     @staticmethod
     def get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
+        """
+        Query the status of a single case
+
+        Args:
+            case_num: case number to be queried.
+            case_type: case type to be checked. If the case is not the type specified by input case_type, return None
+        """
+
         data = {
             'appReceiptNum': case_num,
             'caseStatusSearchBtn': 'CHECK STATUS'

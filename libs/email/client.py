@@ -6,18 +6,18 @@ from botocore.exceptions import ClientError
 
 class EmailClient(object):
     """
-    base class of email client
+    Base class of email client
     """
     def send(self, message: MIMEMultipart) -> None:
         """
-        send email with the message
+        Send email with the message
         """
         raise NotImplementedError
 
 
 class SESEmailClient(EmailClient):
     """
-    email client using SES
+    Email client using AWS SES client
     """
     def __init__(self):
         self.client = boto3.client('ses', region_name='us-east-1')
