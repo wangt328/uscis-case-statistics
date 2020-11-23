@@ -3,8 +3,9 @@ from config.mongo import config
 
 
 class MongoDatabase(object):
-    """This class returns a database object, not a mongo client. In order to access the client,
-    use the syntax: `database.client`
+    """
+    This class returns a database object, not a mongo client. 
+    In order to access the client, use the syntax: `database.client`
     """
   
     def __new__(cls, db: str, *arg, **kwargs) -> pymongo.database.Database:
