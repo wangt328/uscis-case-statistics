@@ -1,18 +1,25 @@
+import asyncio
 import re
 import time
 from datetime import datetime
 from typing import Dict, Union, Any, Optional, List
 
+import aiohttp
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup
 from pandas import Timestamp
 from pymongo import UpdateOne
 
 from libs.mongodb.client import MongoDatabase
+from libs.utils import batch
 
 CASE_DATE_PATTERN = r'[(A-Za-z)]*\s[\d]*,\s[\d]*'
 CASE_STATUS_PATTERN = r'\: (.*?) \+'
+HEADERS = {
+    'user-agent': ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) '
+                   'AppleWebKit/537.36 (KHTML, like Gecko) '
+                   'Chrome/45.0.2454.101 Safari/537.36'),
+}
 
 
 class USCISStatusFetcher(object):
@@ -41,6 +48,17 @@ class USCISStatusFetcher(object):
         if db_writes:
             self._collection.bulk_write(db_writes)
 
+    def __get_case_numbers(self,
+                           service_center: str,
+                           fiscal_year: str,
+                           sampling_work_days: List[int],
+                           sampling_case_nums: List[int]
+                           ) -> List[str]:
+        case_numbers = [
+            service_center + fiscal_year + str(x) + str(y) for x in sampling_work_days for y in sampling_case_nums]
+
+        return list(filter(lambda x: x not in self._approved_case_nums, case_numbers))
+
     def query(self,
               case_type: str,
               service_center: str,
@@ -57,27 +75,34 @@ class USCISStatusFetcher(object):
             sampling_work_days: list of receive dates that we want to query
             sampling_case_nums: list of case processing numbers to query
         """
+        case_numbers = self.__get_case_numbers(service_center, fiscal_year, sampling_work_days, sampling_case_nums)
 
-        for i in sampling_work_days:
-            result = []
-            for j in sampling_case_nums:
-                case_number = service_center + fiscal_year + str(i) + str(j)
-                if case_number in self._approved_case_nums:
-                    continue
+        batch_id = 1
 
-                case_status = self.get_case_status(case_number, case_type)
-                if case_status:
-                    print('Query ' + case_number + '：' + case_status['status'])
-                    result.append(case_status)
-            self.__write_to_mongo(result)
-            time.sleep(60)
+        for shard in batch(case_numbers, 10):
+            print('-' * 10 + ' Processing Batch {} '.format(batch_id) + '-' * 10)
+            loop = asyncio.get_event_loop()
+
+            result = loop.run_until_complete(
+                asyncio.gather(
+                    *(self.get_case_status(x, case_type) for x in shard)
+                )
+            )
+
+            filtered_result = [x for x in result if x is not None]
+
+            print('Successfully query {} results...'.format(len(filtered_result)))
+
+            self.__write_to_mongo(filtered_result)
+            time.sleep(5)
+            batch_id += 1
 
         cursor = self._collection.find()
         df = pd.DataFrame(list(cursor))
         df.to_csv('df_{}.csv'.format(datetime.now().strftime("%Y_%m_%d")))
 
     @staticmethod
-    def get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
+    async def get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
         """
         Query the status of a single case
 
@@ -91,9 +116,15 @@ class USCISStatusFetcher(object):
             'caseStatusSearchBtn': 'CHECK STATUS'
         }
 
-        response = requests.post('https://egov.uscis.gov/casestatus/mycasestatus.do', data=data)
+        url = 'https://egov.uscis.gov/casestatus/mycasestatus.do'
 
-        soup = BeautifulSoup(response.text, 'lxml')
+        print('Query case: ' + case_num)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=HEADERS, params=data) as resp:
+                data = await resp.text()
+
+        soup = BeautifulSoup(data, 'lxml')
         status_message = soup.find('div', 'rows text-center').text
 
         if case_type not in status_message:
