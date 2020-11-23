@@ -42,24 +42,26 @@ class USCISStatusFetcher(object):
             self._collection.bulk_write(db_writes)
 
     def query(self,
-              service_center: str,
               case_type: str,
-              sampling_dates: List[int],
-              sampling_range: int) -> None:
+              service_center: str,
+              fiscal_year: str,
+              sampling_work_days: List[int],
+              sampling_case_nums: List[int]) -> None:
         """
         Query the case status within the range and dates and save the result to the MongoDB
 
         Args:
             service_center: three characters that stands for the USCIS processing center. For example, LIN, EAC, etc
+            fiscal_year: fiscal year as string, '20' for 2020
             case_type: form type like 'I-539', 'I-765', etc
-            sampling_dates: list of receive dates that we want to query.
-            sampling_range: number of cases we want to query from 50000.
+            sampling_work_days: list of receive dates that we want to query
+            sampling_case_nums: list of case processing numbers to query
         """
 
-        for i in sampling_dates:
+        for i in sampling_work_days:
             result = []
-            for j in range(sampling_range):
-                case_number = service_center + str(i) + str(50000 + j)
+            for j in sampling_case_nums:
+                case_number = service_center + fiscal_year + str(i) + str(j)
                 if case_number in self._approved_case_nums:
                     continue
 
