@@ -1,10 +1,9 @@
 # uscis-case-statistics
 
-This project can query a range of case numbers and save results to MongoDB. 
+This project can query a range of case numbers and save results to MongoDB. Before running the code, you should have
 
-You can resigter a MongoDB Atlas account which will give you a free 512MB storage. After you create the MongoDB Atlas, please update the `mongo.py` under the `config` folder so that the daily results can be saved into your MongoDB. 
-
-Furthermore, you can create an AWS account and deploy the code to a lambda function, set up a cron job and run the scrawler job overnight. 
+- MongoDB Atlas account. You can resigter a MongoDB Atlas account which will give you a free 512MB storage. After you create the MongoDB Atlas, please update the `mongo.py` under the `config` folder so that the daily results can be saved into your MongoDB. 
+- (Optional) AWS account. Furthermore, you can create an AWS account and deploy the code to a lambda function, set up a cron job and run the scrawler job overnight. 
 
 ## USCIS Receipt Numbers Explained (LIN, SRC, EAC, WAC, IOE)
 The USCIS receipt or case number is one of the most commonly used numbers, by immigrants and lawyers alike, to track the progress or identify a particular immigration case or filing.
