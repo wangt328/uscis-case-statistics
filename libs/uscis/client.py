@@ -65,9 +65,9 @@ class USCISStatusFetcher(object):
                 if case_number in self._approved_case_nums:
                     continue
 
-                print('Query ' + case_number)
                 case_status = self.get_case_status(case_number, case_type)
                 if case_status:
+                    print('Query ' + case_number + '：' + case_status['status'])
                     result.append(case_status)
             self.__write_to_mongo(result)
             time.sleep(60)
