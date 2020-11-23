@@ -1,11 +1,26 @@
-# uscis-case-statistics
-
 This project can query a range of case numbers and save results to MongoDB. Before running the code, you should have
 
 - MongoDB Atlas account. You can resigter a MongoDB Atlas account which will give you a free 512MB storage. After you create the MongoDB Atlas, please update the `mongo.py` under the `config` folder so that the daily results can be saved into your MongoDB. 
 - (Optional) AWS account. Furthermore, you can create an AWS account and deploy the code to a lambda function, set up a cron job and run the scrawler job overnight. 
 
-## USCIS Receipt Numbers Explained (LIN, SRC, EAC, WAC, IOE)
+## How to Use
+You can folk the repo and run the `main.py` in any PyCharm. You need to update `CASE_TYPE`, `SERVICE_CENTER`, `FISCAL_YEAR` and other variables as needed.
+
+```
+CASE_TYPE = 'I-539'
+SERVICE_CENTER = 'LIN'
+FISCAL_YEAR = '20'
+WORK_DAYS = list(range(280, 300))
+CASE_NUMBERS = list(range(50000, 51000, 2))
+
+def main():
+    uscis_fetcher = USCISStatusFetcher()
+    uscis_fetcher.query(CASE_TYPE, SERVICE_CENTER, FISCAL_YEAR, WORK_DAYS, CASE_NUMBERS)
+
+main()
+```
+
+## Explaination: USCIS Receipt Number (LIN, SRC, EAC, WAC, IOE)
 The USCIS receipt or case number is one of the most commonly used numbers, by immigrants and lawyers alike, to track the progress or identify a particular immigration case or filing.
 
 These receipt numbers start with three letters followed by a series of numbers, for example `EAC-15-123-45678`.  Here is how to understand what the numbers mean.
