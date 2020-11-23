@@ -23,9 +23,10 @@ HEADERS = {
 
 
 class USCISStatusFetcher(object):
-    def __init__(self):
+    def __init__(self, batch_size: int = 500):
         self._collection = MongoDatabase('uscis')['case_history']
         self._approved_case_nums = self.__get_approved_case_numbers()
+        self._batch_size = batch_size
 
     def __get_approved_case_numbers(self):
         """
@@ -79,7 +80,7 @@ class USCISStatusFetcher(object):
 
         batch_id = 1
 
-        for shard in batch(case_numbers, 10):
+        for shard in batch(case_numbers, self._batch_size):
             print('-' * 10 + ' Processing Batch {} '.format(batch_id) + '-' * 10)
             loop = asyncio.get_event_loop()
 
