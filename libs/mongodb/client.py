@@ -1,5 +1,5 @@
 import pymongo
-from config.mongo import config
+from config.mongodb import config
 
 
 class MongoDatabase(object):
