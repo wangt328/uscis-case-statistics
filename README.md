@@ -1,7 +1,9 @@
-This project can query a range of case numbers and save results to MongoDB. Before running the code, you should have
+This chunk of code can query a range of case numbers and save results to MongoDB. Before running the code, you should have
 
-- MongoDB Atlas account. You can resigter a MongoDB Atlas account which will give you a free 512MB storage. After you create the MongoDB Atlas, please update the `mongo.py` under the `config` folder so that the daily results can be saved into your MongoDB. 
+- MongoDB Atlas account. You can resigter a MongoDB Atlas account which will give you a free 512MB storage. After you create the MongoDB Atlas, please update the `mongodb.py` under the `config` folder so that the daily results can be saved into your MongoDB. 
 - (Optional) AWS account. Furthermore, you can create an AWS account and deploy the code to a lambda function, set up a cron job and run the scrawler job overnight. 
+
+The core scrawler part is implemented asynchronously. You can set the batch size for each batch run in the `uscis.client.py` file.
 
 ## How to Use
 You can folk the repo and run the `main.py` in any PyCharm. You need to update `CASE_TYPE`, `SERVICE_CENTER`, `FISCAL_YEAR` and other variables as needed.
