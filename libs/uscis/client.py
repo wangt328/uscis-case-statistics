@@ -34,7 +34,7 @@ class USCISStatusFetcher(object):
         """
         query = {'status': {'$eq': 'Case Was Approved'}}
         curse = self._collection.find(query, {'_id': False})
-        return set(x['case_number'] for x in curse)
+        return set(x['caseNumber'] for x in curse)
 
     def __write_to_mongo(self, data: List):
         """
@@ -42,7 +42,7 @@ class USCISStatusFetcher(object):
         """
         db_writes = []
         for item in data:
-            update_filter = {'case_number': item['case_number']}
+            update_filter = {'caseNumber': item['caseNumber']}
             update = {'$set': {k: v for k, v in item.items() if v is not None}}
             update_one = UpdateOne(update_filter, update, upsert=True)
             db_writes.append(update_one)
@@ -135,7 +135,6 @@ class USCISStatusFetcher(object):
         if p is not None:
             match = p.group(0)
             last_update_date = datetime.strptime(str(match), '%B %d, %Y')
-            last_update_date = last_update_date.strftime('%m/%d/%Y')
         else:
             last_update_date = datetime.min
 
@@ -148,8 +147,9 @@ class USCISStatusFetcher(object):
         else:
             status = p.group(1)
 
-        return {'case_number': case_num,
-                'case_type': case_type,
+        return {'caseNumber': case_num,
+                'workDay': int(case_num[5:8]),
+                'caseType': case_type,
                 'status': status,
-                'as_of_date': last_update_date,
-                'last_updated_time': Timestamp.now(tz='UTC')}
+                'effectiveDate': last_update_date,
+                'lastUpdateTime': Timestamp.now(tz='UTC')}
