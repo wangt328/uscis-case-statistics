@@ -34,7 +34,6 @@ These receipt numbers start with three letters followed by a series of numbers, 
 
 The first three letters indicate the USCIS service center which is processing the petition, as follows:
 
-```
 - EAC: Vermont Service Center
 - VSC: Vermont Service Center
 - WAC: California Service Center
@@ -47,7 +46,6 @@ The first three letters indicate the USCIS service center which is processing th
 - NBC: National Benefits Center
 - IOE: ELIS (e-Filing)
 - YSC: Potomac Service Center
-```
 
 ### Fiscal Year
 The next two digits represent the fiscal year in which USCIS received the petition.  In the example above, “15″ means that the petition was received by USCIS during Fiscal Year 2015.   Note that the government fiscal year runs from October 1st until September 30th.
