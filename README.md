@@ -7,7 +7,7 @@ This chunk of code can query a range of case numbers and save results to MongoDB
 ## How to Use
 You can folk the repo and run the `main.py` in any PyCharm. You need to update `CASE_TYPE`, `SERVICE_CENTER`, `FISCAL_YEAR` and other variables as needed.
 
-```
+```python
 CASE_TYPE = 'I-539'
 SERVICE_CENTER = 'LIN'
 FISCAL_YEAR = '20'
