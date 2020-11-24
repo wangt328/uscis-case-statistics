@@ -23,9 +23,21 @@ HEADERS = {
 
 
 class USCISStatusFetcher(object):
-    def __init__(self, batch_size: int = 500):
-        self._collection = MongoDatabase('uscis')['case_history']
-        self._approved_case_nums = self.__get_approved_case_numbers()
+    def __init__(self, batch_size: int = 500, save_locally: bool = False):
+        """
+        Args:
+            batch_size: size of batch in the async query
+            save_locally: save final results into a local csv file
+        """
+        self._save_locally = save_locally
+
+        if not save_locally:
+            self._collection = MongoDatabase('uscis')['case_history']
+            self._approved_case_nums = self.__get_approved_case_numbers()
+        else:
+            self._collection = None
+            self._approved_case_nums = set()
+
         self._batch_size = batch_size
 
     def __get_approved_case_numbers(self):
@@ -79,6 +91,7 @@ class USCISStatusFetcher(object):
         case_numbers = self.__get_case_numbers(service_center, fiscal_year, sampling_work_days, sampling_case_nums)
 
         batch_id = 1
+        cumulative_result = []
 
         for shard in batch(case_numbers, self._batch_size):
             print('-' * 10 + ' Processing Batch {} '.format(batch_id) + '-' * 10)
@@ -94,12 +107,19 @@ class USCISStatusFetcher(object):
 
             print('Successfully query {} results...'.format(len(filtered_result)))
 
-            self.__write_to_mongo(filtered_result)
+            if self._save_locally:
+                cumulative_result.extend(filtered_result)
+            else:
+                self.__write_to_mongo(filtered_result)
+
             time.sleep(5)
             batch_id += 1
 
-        cursor = self._collection.find()
-        df = pd.DataFrame(list(cursor))
+        if self._save_locally:
+            df = pd.DataFrame(cumulative_result)
+        else:
+            cursor = self._collection.find()
+            df = pd.DataFrame(list(cursor))
         df.to_csv('df_{}.csv'.format(datetime.now().strftime("%Y_%m_%d")))
 
     @staticmethod
