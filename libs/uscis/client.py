@@ -99,7 +99,7 @@ class USCISStatusFetcher(object):
 
             result = loop.run_until_complete(
                 asyncio.gather(
-                    *(self.get_case_status(x, case_type) for x in shard)
+                    *(self.__get_case_status(x, case_type) for x in shard)
                 )
             )
 
@@ -123,7 +123,7 @@ class USCISStatusFetcher(object):
         df.to_csv('df_{}.csv'.format(datetime.now().strftime("%Y_%m_%d")))
 
     @staticmethod
-    async def get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
+    async def __get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
         """
         Query the status of a single case
 
