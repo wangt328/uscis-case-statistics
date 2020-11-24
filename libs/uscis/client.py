@@ -94,7 +94,7 @@ class USCISStatusFetcher(object):
         cumulative_result = []
 
         for shard in batch(case_numbers, self._batch_size):
-            print('-' * 10 + ' Processing Batch {} '.format(batch_id) + '-' * 10)
+            print('-' * 10 + f' Processing Batch {batch_id} ' + '-' * 10)
             loop = asyncio.get_event_loop()
 
             result = loop.run_until_complete(
@@ -105,7 +105,7 @@ class USCISStatusFetcher(object):
 
             filtered_result = [x for x in result if x is not None]
 
-            print('Successfully query {} results...'.format(len(filtered_result)))
+            print(f'Successfully query {len(filtered_result)} results...')
 
             if self._save_locally:
                 cumulative_result.extend(filtered_result)
