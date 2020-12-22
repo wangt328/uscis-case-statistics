@@ -120,7 +120,7 @@ class USCISStatusFetcher(object):
         else:
             cursor = self._collection.find()
             df = pd.DataFrame(list(cursor))
-        df.to_csv('df_{}.csv'.format(datetime.now().strftime("%Y_%m_%d")))
+        df.to_csv('{}_{}.csv'.format(case_type, datetime.now().strftime("%Y_%m_%d")))
 
     @staticmethod
     async def __get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
@@ -142,7 +142,7 @@ class USCISStatusFetcher(object):
         print('Query case: ' + case_num)
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=HEADERS, params=data) as resp:
+            async with session.get(url, headers=HEADERS, params=data, verify_ssl=False) as resp:
                 data = await resp.text()
 
         soup = BeautifulSoup(data, 'lxml')
