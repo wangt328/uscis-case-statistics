@@ -5,7 +5,7 @@ This chunk of code can query a range of case numbers and save results to MongoDB
 You can also run the code and save result locally without the MongoDB Atlas account by setting `save_locally=True`.
 
 ## How to Use
-You can folk the repo to your local.
+You can clone the repo to your local.
 
 First change directory to the folder where the code is downloaded. Run `pip install -r requirements.txt` to install all the required packages and run the `main.py` file. You need to update `CASE_TYPE`, `SERVICE_CENTER`, `FISCAL_YEAR` and other variables as needed.
 
