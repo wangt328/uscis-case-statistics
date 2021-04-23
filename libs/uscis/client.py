@@ -141,7 +141,12 @@ class USCISStatusFetcher(object):
 
         print('Query case: ' + case_num)
 
-        async with aiohttp.ClientSession() as session:
+        conn = aiohttp.TCPConnector(
+            ttl_dns_cache=300,
+            verify_ssl=False,
+            limit=0)
+
+        async with aiohttp.ClientSession(connector=conn, trust_env=True) as session:
             async with session.get(url, headers=HEADERS, params=data, verify_ssl=False) as resp:
                 data = await resp.text()
 
