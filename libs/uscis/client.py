@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Dict, Union, Any, Optional, List
 
 import aiohttp
+import lxml.html
 import pandas as pd
-from bs4 import BeautifulSoup
 from pandas import Timestamp
 from pymongo import UpdateOne
 
@@ -14,7 +14,6 @@ from libs.mongodb.client import MongoDatabase
 from libs.utils import batch
 
 CASE_DATE_PATTERN = r'[(A-Za-z)]*\s[\d]*,\s[\d]*'
-CASE_STATUS_PATTERN = r'\: (.*?) \+'
 HEADERS = {
     'user-agent': ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) '
                    'AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -32,6 +31,7 @@ class USCISStatusFetcher(object):
         self._save_locally = save_locally
 
         if not save_locally:
+            # make sure you have a mongo collection called "uscis". Update the collection name if needed.
             self._collection = MongoDatabase('uscis')['case_history']
             self._approved_case_nums = self.__get_approved_case_numbers()
         else:
@@ -93,26 +93,18 @@ class USCISStatusFetcher(object):
         batch_id = 1
         cumulative_result = []
 
+        loop = asyncio.get_event_loop()
         for shard in batch(case_numbers, self._batch_size):
-            print('-' * 10 + f' Processing Batch {batch_id} ' + '-' * 10)
-            loop = asyncio.get_event_loop()
+            print('-' * 15 + f' Processing Batch {batch_id} ' + '-' * 15)
 
-            result = loop.run_until_complete(
-                asyncio.gather(
-                    *(self.__get_case_status(x, case_type) for x in shard)
-                )
-            )
-
-            filtered_result = [x for x in result if x is not None]
-
-            print(f'Successfully query {len(filtered_result)} results...')
+            filtered_result = loop.run_until_complete(self.__fetch_all(shard, case_type))
 
             if self._save_locally:
                 cumulative_result.extend(filtered_result)
             else:
                 self.__write_to_mongo(filtered_result)
 
-            time.sleep(5)
+            time.sleep(2)
             batch_id += 1
 
         if self._save_locally:
@@ -121,13 +113,35 @@ class USCISStatusFetcher(object):
             cursor = self._collection.find()
             df = pd.DataFrame(list(cursor))
         df.to_csv('{}_{}.csv'.format(case_type, datetime.now().strftime("%Y_%m_%d")))
+        loop.close()
+
+    @classmethod
+    async def __fetch_all(cls, case_batch: List[str], case_type: str):
+        """
+        Query the status of a batch
+
+        Args:
+            case_batch: a batch of case numbers
+            case_type: case type
+        """
+        # conn = aiohttp.TCPConnector(
+        #     ttl_dns_cache=300,
+        #     verify_ssl=False,
+        #     limit=0)
+
+        async with aiohttp.ClientSession() as session:
+            result = await asyncio.gather(*[cls.fetch(session, x, case_type) for x in case_batch])
+            filtered_result = [x for x in result if x is not None]
+            print(f'Successfully query {len(filtered_result)} results for case type {case_type}')
+            return filtered_result
 
     @staticmethod
-    async def __get_case_status(case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
+    async def fetch(session: aiohttp.ClientSession, case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
         """
         Query the status of a single case
 
         Args:
+            session: aio http client session
             case_num: case number to be queried.
             case_type: case type to be checked. If the case is not the type specified by input case_type, return None
         """
@@ -139,19 +153,20 @@ class USCISStatusFetcher(object):
 
         url = 'https://egov.uscis.gov/casestatus/mycasestatus.do'
 
-        print('Query case: ' + case_num)
+        # print('Query case: ' + case_num)
 
-        conn = aiohttp.TCPConnector(
-            ttl_dns_cache=300,
-            verify_ssl=False,
-            limit=0)
+        async with session.get(url, headers=HEADERS, params=data, verify_ssl=False) as resp:
+            data = await resp.text()
 
-        async with aiohttp.ClientSession(connector=conn, trust_env=True) as session:
-            async with session.get(url, headers=HEADERS, params=data, verify_ssl=False) as resp:
-                data = await resp.text()
+        selector = lxml.html.fromstring(data)
 
-        soup = BeautifulSoup(data, 'lxml')
-        status_message = soup.find('div', 'rows text-center').text
+        # if the status title is empty, the receipt number is not valid
+        try:
+            status_title = selector.xpath('//div[@class="rows text-center"]/h1/text()')[0]
+        except IndexError:
+            return None
+
+        status_message = selector.xpath('//div[@class="rows text-center"]/p/text()')[0]
 
         if case_type not in status_message:
             return None
@@ -163,18 +178,9 @@ class USCISStatusFetcher(object):
         else:
             last_update_date = datetime.min
 
-        status_title = soup.find('div', {'class': 'current-status-sec'})
-        status_message = ' '.join(status_title.text.split())
-
-        p = re.search(CASE_STATUS_PATTERN, status_message)
-        if p is None:
-            status = 'No result is available'
-        else:
-            status = p.group(1)
-
         return {'caseNumber': case_num,
                 'workDay': int(case_num[5:8]),
                 'caseType': case_type,
-                'status': status,
+                'status': status_title,
                 'effectiveDate': last_update_date,
                 'lastUpdateTime': Timestamp.now(tz='UTC')}
