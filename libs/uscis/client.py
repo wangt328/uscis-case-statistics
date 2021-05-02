@@ -130,9 +130,14 @@ class USCISStatusFetcher(object):
         #     limit=0)
 
         async with aiohttp.ClientSession() as session:
-            result = await asyncio.gather(*[cls.fetch(session, x, case_type) for x in case_batch])
+            result = await asyncio.gather(
+                *[cls.fetch(session, x, case_type) for x in case_batch]
+            )
+
             filtered_result = [x for x in result if x is not None]
+
             print(f'Successfully query {len(filtered_result)} results for case type {case_type}')
+
             return filtered_result
 
     @staticmethod
