@@ -6,3 +6,4 @@ pandas
 pymongo
 aiohttp
 lxml
+dnspython
