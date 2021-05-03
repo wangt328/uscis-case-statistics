@@ -10,6 +10,6 @@ def timer(fn: Callable):
         start = time.time()
         result = fn(*args, **kwargs)
         end = time.time()
-        print('[timer] function={} timeTakenMillis={:.1f}'.format(fn.__name__, (end - start) * 1000))
+        print('[INFO] function={} timeTakenMillis={:.1f}'.format(fn.__name__, (end - start) * 1000))
         return result
     return wrapper

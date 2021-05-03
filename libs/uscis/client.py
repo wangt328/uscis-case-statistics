@@ -14,6 +14,7 @@ from libs.mongodb.client import MongoDatabase
 from libs.utils import batch
 
 CASE_DATE_PATTERN = r'[(A-Za-z)]*\s[\d]*,\s[\d]*'
+CASE_TYPE_PATTERN = r'I-\d{3}'
 HEADERS = {
     'user-agent': ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) '
                    'AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -73,18 +74,18 @@ class USCISStatusFetcher(object):
         return list(filter(lambda x: x not in self._approved_case_nums, case_numbers))
 
     def query(self,
-              case_type: str,
               service_center: str,
               fiscal_year: str,
               sampling_work_days: List[int],
-              sampling_case_nums: List[int]) -> None:
+              sampling_case_nums: List[int],
+              filter_on_case_type: Optional[str]) -> None:
         """
         Query the case status within the range and dates and save the result to the MongoDB
 
         Args:
             service_center: three characters that stands for the USCIS processing center. For example, LIN, EAC, etc
             fiscal_year: fiscal year as string, '20' for 2020
-            case_type: form type like 'I-539', 'I-765', etc
+            filter_on_case_type: form type like 'I-539', 'I-765', etc
             sampling_work_days: list of receive dates that we want to query
             sampling_case_nums: list of case processing numbers to query
         """
@@ -95,9 +96,9 @@ class USCISStatusFetcher(object):
 
         loop = asyncio.get_event_loop()
         for shard in batch(case_numbers, self._batch_size):
-            print('-' * 15 + f' Processing Batch {batch_id} ' + '-' * 15)
+            print(f'[INFO] Processing Batch {batch_id}')
 
-            filtered_result = loop.run_until_complete(self.__fetch_all(shard, case_type))
+            filtered_result = loop.run_until_complete(self.__fetch_all(shard))
 
             if self._save_locally:
                 cumulative_result.extend(filtered_result)
@@ -112,17 +113,21 @@ class USCISStatusFetcher(object):
         else:
             cursor = self._collection.find()
             df = pd.DataFrame(list(cursor))
-        df.to_csv('{}_{}.csv'.format(case_type, datetime.now().strftime("%Y_%m_%d")))
+
+        if filter_on_case_type is not None:
+            df = df[df['caseType'] == filter_on_case_type]
+            print(f'[INFO] Filtered the result to {filter_on_case_type} only')
+
+        df.to_csv('{}.csv'.format(datetime.now().strftime("%Y_%m_%d")))
         loop.close()
 
     @classmethod
-    async def __fetch_all(cls, case_batch: List[str], case_type: str):
+    async def __fetch_all(cls, case_batch: List[str]):
         """
         Query the status of a batch
 
         Args:
             case_batch: a batch of case numbers
-            case_type: case type
         """
         # conn = aiohttp.TCPConnector(
         #     ttl_dns_cache=300,
@@ -131,24 +136,23 @@ class USCISStatusFetcher(object):
 
         async with aiohttp.ClientSession() as session:
             result = await asyncio.gather(
-                *[cls.fetch(session, x, case_type) for x in case_batch]
+                *[cls.fetch(session, x) for x in case_batch]
             )
 
             filtered_result = [x for x in result if x is not None]
 
-            print(f'Successfully query {len(filtered_result)} results for case type {case_type}')
+            print(f'[INFO] Successfully query {len(filtered_result)} results')
 
             return filtered_result
 
     @staticmethod
-    async def fetch(session: aiohttp.ClientSession, case_num: str, case_type: str) -> Optional[Dict[str, Union[str, Any]]]:
+    async def fetch(session: aiohttp.ClientSession, case_num: str) -> Optional[Dict[str, Union[str, Any]]]:
         """
         Query the status of a single case
 
         Args:
             session: aio http client session
             case_num: case number to be queried.
-            case_type: case type to be checked. If the case is not the type specified by input case_type, return None
         """
 
         data = {
@@ -173,8 +177,12 @@ class USCISStatusFetcher(object):
 
         status_message = selector.xpath('//div[@class="rows text-center"]/p/text()')[0]
 
-        if case_type not in status_message:
+        p = re.search(CASE_TYPE_PATTERN, status_message)
+
+        if p is None:
             return None
+        else:
+            case_type = p.group(0)
 
         p = re.search(CASE_DATE_PATTERN, status_message)
         if p is not None:
