@@ -10,6 +10,8 @@ You can clone the repo to your local.
 First change directory to the folder where the code is downloaded. Run `pip install -r requirements.txt` to install all the required packages and run the `main.py` file. You need to update `CASE_TYPE`, `SERVICE_CENTER`, `FISCAL_YEAR` and other variables as needed.
 
 ```python
+from libs.uscis.client import USCISStatusFetcher
+
 # Assume your receipt number is LIN2028551101, then
 # your fiscal_year is 20, work day is 285 and case number is 51101.
 
@@ -23,9 +25,13 @@ CASE_NUMBERS = list(range(50000, 51001, 1)) # change it to the case number range
 
 def main():
     uscis_fetcher = USCISStatusFetcher(batch_size=500, save_locally=True)
-    uscis_fetcher.query(CASE_TYPE, SERVICE_CENTER, FISCAL_YEAR, WORK_DAYS, CASE_NUMBERS)
+    uscis_fetcher.query(CASE_TYPE, SERVICE_CENTER, FISCAL_YEAR, WORK_DAYS, CASE_NUMBERS, 
+                        filter_on_case_type=CASE_TYPE)
 
 
 main()
 ```
-If `save_locally` is set to `True`, the query result will be saved as a `.csv` file locally. Otherwise, the results will be upserted into the MongoDB Atlas ans save all the data in the collection into a `.csv` file locally.
+If `save_locally` is set to `True`, the query result will be saved as a `.csv` file locally. Otherwise, the results will be upserted into the MongoDB Atlas ans save all the data in the collection into a `.csv` file locally. The content of the file will be like this,
+
+
+![example](https://i.postimg.cc/PfYgBL0h/example.jpg)
